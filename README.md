@@ -11,12 +11,10 @@ This project is intended to be used as a template for future website builds. The
 
 ## Current Role
 
-This folder is the template/base version of the project at:
-
 - Server path: `/var/www/template`
-- Git remote: `git@github.com:Gaia-Digital-Agency/openclaw_base.git`
+- Git remote: `git@github.com:Gaia-Digital-Agency/web_template.git`
 
-It was copied from the working `gaiadaweb` project and is being separated into a reusable starter for future projects.
+This is the base template project, forked from the `gaiadaweb` project and maintained as a reusable starter for future builds.
 
 ## Stack
 
