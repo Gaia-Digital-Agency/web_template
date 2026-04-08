@@ -82,6 +82,19 @@ The following config files were moved into `config/tooling` to keep the root cle
 
 `package.json` scripts were updated to point to those new paths.
 
+## Serena Management API
+
+This template includes a reusable Serena management layer under `/api/serena/*`.
+
+Current V1 endpoints:
+
+- `GET /api/serena/auth/verify`
+- `GET /api/serena/status`
+- `POST /api/serena/pages/upsert`
+- `POST /api/serena/revalidate`
+
+See `docs/serena-api.md` for the contract and expected environment variables.
+
 ## Database Backup
 
 A compressed database backup for the template project can be stored in:
