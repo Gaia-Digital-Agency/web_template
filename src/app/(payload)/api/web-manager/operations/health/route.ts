@@ -10,13 +10,7 @@ export async function GET(request: NextRequest) {
   const auth = authorizeWebManagerRequest(request)
 
   if (!auth.ok) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: auth.error,
-      },
-      { status: auth.status },
-    )
+    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
   }
 
   const payload = await getPayload({ config: configPromise })
@@ -30,27 +24,17 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     service: 'web-manager-v1',
-    scope: getWebManagerScope(),
     serverUrl: getServerSideURL(),
-    basePath: '/template',
     environment: process.env.NODE_ENV || 'development',
-    collections: {
-      pages: {
-        total: pages.totalDocs,
-      },
+    scope: getWebManagerScope(),
+    checks: {
+      auth: 'ok',
+      cms: 'ok',
+      database: 'ok',
     },
-    features: {
-      pageUpsert: true,
-      postUpsert: true,
-      globalUpdate: true,
-      mediaUpload: true,
-      approvalRequest: true,
-      publish: true,
-      contentSearch: true,
-      revalidate: true,
-      publishBundle: true,
-      operationsHealth: true,
-      operationsCache: true,
+    metrics: {
+      uptimeSeconds: Math.round(process.uptime()),
+      pageCount: pages.totalDocs,
     },
   })
 }

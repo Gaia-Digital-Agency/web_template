@@ -82,26 +82,29 @@ The following config files were moved into `config/tooling` to keep the root cle
 
 `package.json` scripts were updated to point to those new paths.
 
-## Serena Management API
+## Web-Manager API
 
-This template includes a reusable Serena management layer under `/api/serena/*`.
+This template includes a reusable web-manager management layer under `/api/web-manager/*`.
 
 Current V1 endpoints:
 
-- `GET /api/serena/auth/verify`
-- `GET /api/serena/status`
-- `POST /api/serena/pages/upsert`
-- `POST /api/serena/posts/upsert`
-- `POST /api/serena/globals/update`
-- `POST /api/serena/media/upload`
-- `POST /api/serena/approval/request`
-- `POST /api/serena/publish`
-- `GET /api/serena/content/search`
-- `POST /api/serena/revalidate`
+- `GET /api/web-manager/auth/verify`
+- `GET /api/web-manager/status`
+- `POST /api/web-manager/pages/upsert`
+- `POST /api/web-manager/posts/upsert`
+- `POST /api/web-manager/globals/update`
+- `POST /api/web-manager/media/upload`
+- `POST /api/web-manager/approval/request`
+- `POST /api/web-manager/publish`
+- `GET /api/web-manager/content/search`
+- `POST /api/web-manager/revalidate`
+- `GET /api/web-manager/operations/health`
+- `POST /api/web-manager/operations/cache`
+- `POST /api/web-manager/workflows/publish-bundle`
 
-Neutral Hutton-facing aliases are also available under `/api/web-manager/*` with the same request and response shapes.
+Neutral Grayson-facing aliases are also available under `/api/web-manager/*` with the same request and response shapes.
 
-See `docs/serena-api.md` for the contract and expected environment variables.
+See `docs/web-manager-api.md` for the contract and expected environment variables.
 
 ## Database Backup
 

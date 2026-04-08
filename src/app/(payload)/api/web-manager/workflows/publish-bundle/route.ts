@@ -1,35 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
 import {
-  authorizeSerenaRequest,
+  authorizeWebManagerRequest,
   buildDocumentPath,
   collectApprovalIssues,
+  defaultCollectionTags,
   findManagedDocument,
   isSupportedManagedCollection,
-  type SerenaManagedCollection,
-} from '@/utilities/serena'
+  type WebManagerManagedCollection,
+} from '@/utilities/web-manager'
 
-type PublishBody = {
+type PublishBundleBody = {
   collection: string
   id?: number | string
   slug?: string
-  requireApproval?: boolean
+  revalidatePath?: string
+  revalidateTag?: string
 }
 
 export async function POST(request: NextRequest) {
-  const auth = authorizeSerenaRequest(request)
+  const auth = authorizeWebManagerRequest(request)
 
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
   }
 
-  let body: PublishBody
+  let body: PublishBundleBody
 
   try {
-    body = (await request.json()) as PublishBody
+    body = (await request.json()) as PublishBundleBody
   } catch {
     return NextResponse.json({ ok: false, error: 'Request body must be valid JSON.' }, { status: 400 })
   }
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: 'Provide `id` or `slug`.' }, { status: 400 })
   }
 
-  const collection = body.collection as SerenaManagedCollection
+  const collection = body.collection as WebManagerManagedCollection
   const payload = await getPayload({ config: configPromise })
   const existing = await findManagedDocument(payload, {
     collection,
@@ -56,13 +59,9 @@ export async function POST(request: NextRequest) {
 
   const issues = collectApprovalIssues({ collection, doc: existing })
 
-  if (body.requireApproval !== false && issues.length > 0) {
+  if (issues.length > 0) {
     return NextResponse.json(
-      {
-        ok: false,
-        error: 'Document is not approval-ready.',
-        issues,
-      },
+      { ok: false, error: 'Document is not approval-ready.', issues },
       { status: 400 },
     )
   }
@@ -78,21 +77,41 @@ export async function POST(request: NextRequest) {
     overrideAccess: true,
   })
 
-  const path = buildDocumentPath({ collection, slug: result.slug })
+  const documentPath = buildDocumentPath({ collection, slug: result.slug })
+  const revalidatePathValue = body.revalidatePath?.trim() || documentPath
+  const revalidateTagValue = body.revalidateTag?.trim() || defaultCollectionTags[collection]
 
-  payload.logger.info(`[serena] published collection=${collection} slug=${result.slug} ip=${auth.clientIp || 'unknown'}`)
+  if (revalidatePathValue) {
+    revalidatePath(revalidatePathValue)
+  }
+
+  if (revalidateTagValue) {
+    revalidateTag(revalidateTagValue, 'max')
+  }
+
+  payload.logger.info(
+    `[web-manager] publish-bundle collection=${collection} slug=${result.slug} ip=${auth.clientIp || 'unknown'}`,
+  )
 
   return NextResponse.json({
     ok: true,
-    action: 'published',
+    action: 'publish-bundle',
     collection,
+    approval: {
+      ready: true,
+      issues: [],
+    },
     document: {
       id: result.id,
       title: result.title,
       slug: result.slug,
       status: result._status,
-      path,
+      path: documentPath,
       updatedAt: result.updatedAt,
+    },
+    revalidated: {
+      path: revalidatePathValue || null,
+      tag: revalidateTagValue || null,
     },
   })
 }

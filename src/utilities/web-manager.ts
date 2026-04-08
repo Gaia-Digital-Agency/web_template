@@ -16,23 +16,26 @@ const defaultScopes = [
   'publish:write',
   'search:read',
   'revalidate:write',
+  'workflows:write',
+  'operations:read',
+  'cache:write',
 ] as const
 
-type SerenaAuthSuccess = {
+type WebManagerAuthSuccess = {
   ok: true
   clientIp: string | null
   scope: readonly string[]
 }
 
-type SerenaAuthFailure = {
+type WebManagerAuthFailure = {
   ok: false
   error: string
   status: number
 }
 
-export type SerenaAuthResult = SerenaAuthSuccess | SerenaAuthFailure
+export type WebManagerAuthResult = WebManagerAuthSuccess | WebManagerAuthFailure
 
-export type SerenaPageUpsertInput = {
+export type WebManagerPageUpsertInput = {
   id?: number | string
   title?: string
   slug?: string
@@ -43,7 +46,7 @@ export type SerenaPageUpsertInput = {
   publishedAt?: string | null
 }
 
-export type SerenaPostUpsertInput = {
+export type WebManagerPostUpsertInput = {
   id?: number | string
   title?: string
   slug?: string
@@ -59,18 +62,18 @@ export type SerenaPostUpsertInput = {
 
 export const supportedManagedCollections = ['pages', 'posts', 'services'] as const
 
-export type SerenaManagedCollection = (typeof supportedManagedCollections)[number]
+export type WebManagerManagedCollection = (typeof supportedManagedCollections)[number]
 
-export const isSupportedManagedCollection = (value: string): value is SerenaManagedCollection =>
+export const isSupportedManagedCollection = (value: string): value is WebManagerManagedCollection =>
   (supportedManagedCollections as readonly string[]).includes(value)
 
-export type SerenaDocumentLocator = {
-  collection: SerenaManagedCollection
+export type WebManagerDocumentLocator = {
+  collection: WebManagerManagedCollection
   id?: number | string
   slug?: string
 }
 
-export const getSerenaScope = () => defaultScopes
+export const getWebManagerScope = () => defaultScopes
 
 export const getClientIp = (request: NextRequest): string | null => {
   const forwardedFor = request.headers.get('x-forwarded-for')
@@ -82,15 +85,15 @@ export const getClientIp = (request: NextRequest): string | null => {
   return normalizeIp(request.headers.get('x-real-ip'))
 }
 
-export const getAllowedSerenaIps = () =>
-  (process.env.SERENA_ALLOWED_IPS || '')
+export const getAllowedWebManagerIps = () =>
+  (process.env.WEB_MANAGER_ALLOWED_IPS || '')
     .split(',')
     .map((value) => normalizeIp(value.trim()))
     .filter(Boolean)
 
 const normalizeIp = (value: string | null) => value?.replace(/^::ffff:/, '') || null
 
-const getSerenaSecret = () => process.env.SERENA_API_SECRET || ''
+const getWebManagerSecret = () => process.env.WEB_MANAGER_API_SECRET || ''
 
 const getPresentedSecret = (request: NextRequest) => {
   const authHeader = request.headers.get('authorization')
@@ -99,7 +102,7 @@ const getPresentedSecret = (request: NextRequest) => {
     return authHeader.slice('Bearer '.length).trim()
   }
 
-  return request.headers.get('x-serena-secret')?.trim() || ''
+  return request.headers.get('x-web-manager-secret')?.trim() || ''
 }
 
 const secretsMatch = (expected: string, actual: string) => {
@@ -109,13 +112,13 @@ const secretsMatch = (expected: string, actual: string) => {
   return timingSafeEqual(expectedBuffer, actualBuffer)
 }
 
-export const authorizeSerenaRequest = (request: NextRequest): SerenaAuthResult => {
-  const configuredSecret = getSerenaSecret()
+export const authorizeWebManagerRequest = (request: NextRequest): WebManagerAuthResult => {
+  const configuredSecret = getWebManagerSecret()
 
   if (!configuredSecret) {
     return {
       ok: false,
-      error: 'SERENA_API_SECRET is not configured.',
+      error: 'WEB_MANAGER_API_SECRET is not configured.',
       status: 503,
     }
   }
@@ -125,18 +128,18 @@ export const authorizeSerenaRequest = (request: NextRequest): SerenaAuthResult =
   if (!presentedSecret || !secretsMatch(configuredSecret, presentedSecret)) {
     return {
       ok: false,
-      error: 'Invalid Serena credentials.',
+      error: 'Invalid web-manager credentials.',
       status: 401,
     }
   }
 
-  const allowedIps = getAllowedSerenaIps()
+  const allowedIps = getAllowedWebManagerIps()
   const clientIp = getClientIp(request)
 
   if (allowedIps.length > 0 && (!clientIp || !allowedIps.includes(clientIp))) {
     return {
       ok: false,
-      error: `IP ${clientIp || 'unknown'} is not allowed for Serena.`,
+      error: `IP ${clientIp || 'unknown'} is not allowed for web-manager.`,
       status: 403,
     }
   }
@@ -148,7 +151,7 @@ export const authorizeSerenaRequest = (request: NextRequest): SerenaAuthResult =
   }
 }
 
-export const normalizePageInput = (input: SerenaPageUpsertInput) => {
+export const normalizePageInput = (input: WebManagerPageUpsertInput) => {
   if (!input || typeof input !== 'object') {
     throw new Error('Request body must be a JSON object.')
   }
@@ -177,7 +180,7 @@ export const normalizePageInput = (input: SerenaPageUpsertInput) => {
   }
 }
 
-export const normalizePostInput = (input: SerenaPostUpsertInput) => {
+export const normalizePostInput = (input: WebManagerPostUpsertInput) => {
   if (!input || typeof input !== 'object') {
     throw new Error('Request body must be a JSON object.')
   }
@@ -232,7 +235,7 @@ export const buildDefaultPageLayout = (title?: string) => [
                 type: 'paragraph',
                 children: [
                   {
-                    text: title ? `${title} draft created by Serena.` : 'Draft created by Serena.',
+                    text: title ? `${title} draft created by web-manager.` : 'Draft created by web-manager.',
                   },
                 ],
               },
@@ -291,13 +294,13 @@ export const buildDefaultRichTextRoot = (text: string) => ({
 })
 
 export const buildDefaultPostContent = (title?: string) =>
-  buildDefaultRichTextRoot(title ? `${title} draft created by Serena.` : 'Draft created by Serena.')
+  buildDefaultRichTextRoot(title ? `${title} draft created by web-manager.` : 'Draft created by web-manager.')
 
 export const buildDocumentPath = ({
   collection,
   slug,
 }: {
-  collection: SerenaManagedCollection
+  collection: WebManagerManagedCollection
   slug?: string | null
 }) => {
   if (!slug) return null
@@ -319,7 +322,7 @@ export const buildDocumentPath = ({
 
 export const findManagedDocument = async (
   payload: any,
-  locator: SerenaDocumentLocator,
+  locator: WebManagerDocumentLocator,
 ) => {
   if (locator.id !== undefined) {
     try {
@@ -358,7 +361,7 @@ export const collectApprovalIssues = ({
   collection,
   doc,
 }: {
-  collection: SerenaManagedCollection
+  collection: WebManagerManagedCollection
   doc: Record<string, any>
 }) => {
   const issues: string[] = []
@@ -383,7 +386,13 @@ export const collectApprovalIssues = ({
 
 export const allowedGlobalSlugs = ['header', 'footer', 'settings'] as const
 
-export type SerenaGlobalSlug = (typeof allowedGlobalSlugs)[number]
+export type WebManagerGlobalSlug = (typeof allowedGlobalSlugs)[number]
 
-export const isAllowedGlobalSlug = (value: string): value is SerenaGlobalSlug =>
+export const isAllowedGlobalSlug = (value: string): value is WebManagerGlobalSlug =>
   (allowedGlobalSlugs as readonly string[]).includes(value)
+
+export const defaultCollectionTags: Record<WebManagerManagedCollection, string> = {
+  pages: 'pages-sitemap',
+  posts: 'posts-sitemap',
+  services: 'services-list',
+}
